@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="theme-color" content="#15233a">
+  <title>Фотомониторинг объектов</title>
+  <script>
+    (() => {
+      "use strict";
+      const prefix = "[PhotoDashboard]";
+      const startedAt = performance.now();
+      const records = [];
+      function write(method, stage, message, details) {
+        const elapsedMs = Math.round(performance.now() - startedAt);
+        const record = { stage, message, elapsedMs, details: details || null };
+        records.push(record);
+        const output = `${prefix} ${message}`;
+        if (details === undefined) console[method](output);
+        else console[method](output, details);
+      }
+      window.PHOTO_DASHBOARD_BUILD = "2.0.7-rc5-fast-load-20260804";
+      window.PHOTO_DASHBOARD_ASSETS = Object.create(null);
+      window.PhotoDashboardDiagnostics = Object.freeze({
+        records,
+        log(stage, message, details) { write("info", stage, message, details); },
+        warn(stage, message, details) { write("warn", stage, message, details); },
+        fail(stage, error) {
+          write("error", stage, `Initialization failed at stage: ${stage}`, error);
+        }
+      });
+      window.addEventListener("error", event => {
+        window.PhotoDashboardDiagnostics.fail("window-error", event.error || event.message);
+      });
+      window.addEventListener("unhandledrejection", event => {
+        window.PhotoDashboardDiagnostics.fail("unhandled-promise", event.reason);
+      });
+      window.PhotoDashboardDiagnostics.log("html-shell", "HTML received; static auth shell is available");
+    })();
+  </script>
+  <style>
+    /* Critical auth layout: remains usable even if styles.css or dashboard JavaScript fails. */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { width: 100%; min-height: 100%; margin: 0; }
+    body { background: #101b2d; font-family: "Segoe UI", Arial, sans-serif; }
+    body.auth-pending #app,
+    body.auth-active #app { display: none !important; }
+    .password-gate {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      min-height: 100vh;
+      height: 100dvh;
+      overflow: auto;
+      display: grid;
+      place-items: center;
+      padding:
+        max(16px, env(safe-area-inset-top))
+        max(16px, env(safe-area-inset-right))
+        max(16px, env(safe-area-inset-bottom))
+        max(16px, env(safe-area-inset-left));
+      background: linear-gradient(145deg, #101b2d, #172942 58%, #0f1c2f);
+    }
+    .password-card {
+      width: min(420px, 100%);
+      max-height: 100%;
+      margin: auto 0;
+      padding: 28px;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 22px;
+      color: #fff;
+      background: rgba(21,35,58,.96);
+      box-shadow: 0 24px 70px rgba(0,0,0,.38);
+    }
+    .password-camera { width: 48px; height: 62px; margin: 0 0 14px; }
+    .password-camera svg { display: block; width: 25px; height: 39px; }
+    .password-card h1 { margin: 4px 0 10px; color: #fff; font-size: clamp(24px, 6vw, 34px); line-height: 1.08; }
+    .password-card p { margin: 0 0 20px; color: rgba(255,255,255,.72); line-height: 1.4; }
+    .password-card label { display: grid; gap: 8px; color: rgba(255,255,255,.78); font-size: 13px; }
+    .password-input-wrap { position: relative; display: block; }
+    .password-input-wrap input {
+      width: 100%;
+      min-height: 48px;
+      padding: 0 94px 0 14px;
+      border: 1px solid rgba(255,255,255,.24);
+      border-radius: 12px;
+      color: #17233a;
+      background: #fff;
+      font: inherit;
+      font-size: 16px;
+    }
+    .password-visibility {
+      position: absolute;
+      top: 50%;
+      right: 6px;
+      min-height: 36px;
+      padding: 0 9px;
+      border: 0;
+      border-radius: 8px;
+      transform: translateY(-50%);
+      color: #44536a;
+      background: #edf1f6;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .password-submit {
+      width: 100%;
+      min-height: 48px;
+      margin-top: 14px;
+      border: 0;
+      border-radius: 12px;
+      color: #fff;
+      background: #c92743;
+      font: inherit;
+      font-weight: 700;
+    }
+    .password-error { margin: 10px 0 0; color: #ffadb8; font-size: 13px; line-height: 1.4; }
+    .hidden { display: none !important; }
+    @media (max-width: 520px) {
+      .password-card { padding: 22px 18px; border-radius: 18px; }
+      .password-camera { height: 50px; margin-bottom: 10px; }
+      .password-card p { margin-bottom: 16px; }
+    }
+    @media (max-height: 620px) {
+      .password-gate { place-items: start center; }
+      .password-card { padding-top: 18px; padding-bottom: 18px; }
+      .password-camera { display: none; }
+      .password-card h1 { font-size: 24px; }
+      .password-card p { margin-bottom: 12px; }
+    }
+  </style>
+</head>
+<body class="auth-pending">
+  <section id="passwordGate" class="password-gate" aria-hidden="false">
+    <form id="passwordForm" class="password-card" autocomplete="off">
+      <div class="password-camera" aria-hidden="true">
+        <svg class="theta-camera" viewBox="0 0 40 58">
+          <rect x="10" y="3" width="20" height="51" rx="10" fill="#ffffff"/>
+          <circle cx="20" cy="15" r="6.2" fill="#17233a"/>
+          <circle cx="20" cy="15" r="3.3" fill="#7cc8ff"/>
+          <circle cx="20" cy="15" r="1.4" fill="#ffffff" opacity=".85"/>
+          <rect x="16" y="29" width="8" height="2.5" rx="1.25" fill="#9e1f36"/>
+          <circle cx="20" cy="39" r="2.2" fill="#c92743"/>
+        </svg>
+      </div>
+      <div class="eyebrow">Защищённая демонстрация</div>
+      <h1>Фотомониторинг объектов</h1>
+      <p>Введите пароль для просмотра дашборда.</p>
+      <label class="password-field">
+        <span>Пароль</span>
+        <span class="password-input-wrap">
+          <input id="passwordInput" type="password" inputmode="text" autocomplete="current-password" required>
+          <button id="passwordVisibility" class="password-visibility" type="button" aria-pressed="false">Показать</button>
+        </span>
+      </label>
+      <div id="passwordError" class="password-error hidden" role="alert">Неверный пароль</div>
+      <div id="authBootError" class="password-error hidden" role="alert"></div>
+      <button class="button primary password-submit" type="submit" disabled>Подключаем…</button>
+      <noscript><div class="password-error">Для входа требуется JavaScript. Разрешите его для этого сайта и обновите страницу.</div></noscript>
+    </form>
+  </section>
+
+  <div id="app" aria-hidden="true">
+    <header class="topbar">
+      <div class="brand-block">
+        <div id="cameraBrand" class="camera-brand" aria-label="Вращающаяся панорамная камера" tabindex="0">
+          <svg class="theta-camera" viewBox="0 0 40 58" aria-hidden="true">
+            <defs>
+              <linearGradient id="cameraBody" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#ffffff"/>
+                <stop offset="1" stop-color="#dbe3ee"/>
+              </linearGradient>
+            </defs>
+            <rect x="10" y="3" width="20" height="51" rx="10" fill="url(#cameraBody)"/>
+            <circle cx="20" cy="15" r="6.2" fill="#17233a"/>
+            <circle cx="20" cy="15" r="3.3" fill="#7cc8ff"/>
+            <circle cx="20" cy="15" r="1.4" fill="#ffffff" opacity=".85"/>
+            <rect x="16" y="29" width="8" height="2.5" rx="1.25" fill="#9e1f36"/>
+            <circle cx="20" cy="39" r="2.2" fill="#c92743"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Фотомониторинг объектов</h1>
+          <div class="subtitle">
+            <span id="currentDate"></span>
+            <span id="syncText" class="sync-text" aria-live="polite"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <span id="adminModeBadge" class="admin-mode-badge hidden">Администратор</span>
+        <span id="sessionText" class="session-text" aria-live="polite"></span>
+        <label class="search-box" aria-label="Поиск объекта">
+          <span>⌕</span>
+          <input id="searchInput" type="search" placeholder="Найти объект или станцию">
+        </label>
+        <button id="filtersButton" class="button" type="button">Фильтры <span id="filterCount" class="badge hidden">0</span></button>
+        <button id="refreshButton" class="icon-button" type="button" title="Обновить">↻</button>
+        <button id="exportButton" class="icon-button" type="button" title="Скачать выезды">⇩</button>
+        <button id="printButton" class="icon-button desktop-only" type="button" title="Печать" aria-label="Печать">
+          <svg class="toolbar-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+            <path d="M7 14h10v7H7z"/>
+            <circle cx="18" cy="11" r="1"/>
+          </svg>
+        </button>
+        <button id="fullscreenButton" class="icon-button desktop-only" type="button" title="Во весь экран">⛶</button>
+        <button id="logoutButton" class="button logout-button" type="button" title="Завершить сессию">Выйти</button>
+      </div>
+    </header>
+
+    <main>
+      <div id="map" aria-label="Светлая карта Яндекса с объектами и границей Москвы"></div>
+
+      <div id="mapLoading" class="map-loading" role="status" aria-live="polite">
+        <div class="loader-spinner"></div>
+        <strong id="mapLoadingTitle">Загружаем Яндекс Карты</strong>
+        <span id="mapLoadingMessage">Интерфейс уже доступен, карта появится после подключения к серверам Яндекса</span>
+        <button id="retryMapLoading" class="button primary map-retry hidden" type="button">Повторить загрузку</button>
+      </div>
+
+      <div id="mapHoverCard" class="map-hover-card hidden" aria-live="polite"></div>
+
+      <section class="operations-panel glass" aria-label="Оперативная информация">
+        <div class="panel-header">
+          <div>
+            <div class="eyebrow">Оперативный график</div>
+                      </div>
+          <button id="collapseOperations" class="panel-toggle" type="button" aria-expanded="false" aria-controls="operationsContent" title="Развернуть оперативный график">+</button>
+        </div>
+
+
+        <div class="week-summary" aria-label="Показатели отчётного периода до штаба">
+          <div class="week-period-row">
+            <span>Период</span>
+            <span id="weekPeriod" class="muted"></span>
+          </div>
+          <div class="week-kpi-grid">
+            <button id="weekObjectsCard" class="week-kpi-card week-kpi-button" type="button"
+                    aria-expanded="false" aria-controls="weekObjectsList">
+              <span class="week-kpi-label">Снято объектов</span>
+              <span class="week-kpi-value-row">
+                <strong id="weekObjectsCount" class="week-kpi-value">0</strong>
+                <span id="weekObjectsChevron" class="week-kpi-chevron" aria-hidden="true">▾</span>
+              </span>
+            </button>
+            <div class="week-kpi-card">
+              <span class="week-kpi-label">Фронт работ</span>
+              <span class="week-kpi-value-row">
+                <strong id="weekPointsCount" class="week-kpi-value">0</strong>
+                <span class="week-kpi-unit">точек</span>
+              </span>
+            </div>
+          </div>
+          <div id="weekObjectsList" class="week-objects-list hidden"></div>
+        </div>
+
+        <div id="operationsContent" class="hidden">
+          <div class="day-section">
+            <div class="day-title">
+              <span>Сегодня</span>
+              <span id="todayDate" class="muted"></span>
+            </div>
+            <div id="todayList" class="visit-list"></div>
+            <button id="todayMore" class="text-button hidden" type="button">Показать все</button>
+          </div>
+
+          <div class="day-section">
+            <div class="day-title">
+              <span>Завтра</span>
+              <span id="tomorrowDate" class="muted"></span>
+            </div>
+            <div id="tomorrowList" class="visit-list"></div>
+            <button id="tomorrowMore" class="text-button hidden" type="button">Показать все</button>
+          </div>
+
+          <div class="stats-header">
+            <span>Статистика</span>
+            <button id="statsToggle" class="text-button" type="button">Свернуть</button>
+          </div>
+          <div id="statsGrid" class="stats-grid"></div>
+        </div>
+      </section>
+
+      <section id="mapLegend" class="legend glass" aria-label="Легенда">
+        <button id="hideLegend" class="legend-hide-button" type="button" aria-label="Скрыть легенду" title="Скрыть легенду">×</button>
+        <div class="legend-title">Группы объектов</div>
+        <div id="legendItems"></div>
+        <div class="legend-separator"></div>
+        <div class="legend-title">Виды работ</div>
+        <div id="workTypeLegendItems"></div>
+        <div class="legend-separator"></div>
+        <div class="legend-title">Статусы</div>
+        <div class="status-legend">
+          <span><b>●</b> Сегодня</span>
+          <span><b>✓</b> Выполнен</span>
+          <span><b>◷</b> Запланирован</span>
+          <span><b>!</b> Нет следующего выезда</span>
+        </div>
+      </section>
+      <button id="showLegend" class="legend-show-button glass hidden" type="button" aria-label="Показать легенду">Легенда</button>
+
+
+      <aside id="detailDrawer" class="detail-drawer" aria-hidden="true">
+        <button id="closeDetail" class="drawer-close" type="button" aria-label="Закрыть">×</button>
+        <div id="detailContent"></div>
+      </aside>
+
+      <aside id="filterDrawer" class="filter-drawer" aria-hidden="true">
+        <div class="drawer-heading">
+          <div>
+            <div class="eyebrow">Отображение карты</div>
+            <h2>Фильтры</h2>
+          </div>
+          <button id="closeFilters" class="drawer-close inline" type="button">×</button>
+        </div>
+
+        <div class="filter-form">
+          <label>
+            <span>Группа / линия</span>
+            <select id="groupFilter"><option value="">Все группы</option></select>
+          </label>
+          <label>
+            <span>Тип объекта</span>
+            <select id="typeFilter"><option value="">Все типы</option></select>
+          </label>
+          <label>
+            <span>Ответственный</span>
+            <select id="employeeFilter"><option value="">Все сотрудники</option></select>
+          </label>
+          <label>
+            <span>Вид работ</span>
+            <select id="workTypeFilter"><option value="">Все виды работ</option></select>
+          </label>
+          <label>
+            <span>Наличие следующего выезда</span>
+            <select id="nextFilter">
+              <option value="">Не учитывать</option>
+              <option value="yes">Есть следующая съёмка</option>
+              <option value="no">Следующая съёмка не назначена</option>
+            </select>
+          </label>
+          <label>
+            <span>Быстрый период</span>
+            <select id="quickFilter">
+              <option value="">Не учитывать</option>
+              <option value="today">Сегодня</option>
+              <option value="tomorrow">Завтра</option>
+              <option value="week">Текущая рабочая неделя</option>
+            </select>
+          </label>
+          <div class="date-row">
+            <label>
+              <span>Съёмки с</span>
+              <input id="dateFromFilter" type="date">
+            </label>
+            <label>
+              <span>по</span>
+              <input id="dateToFilter" type="date">
+            </label>
+          </div>
+        </div>
+
+        <div class="drawer-actions">
+          <button id="resetFilters" class="button secondary" type="button">Сбросить</button>
+          <button id="applyFilters" class="button primary" type="button">Показать объекты</button>
+        </div>
+      </aside>
+
+      <div id="drawerBackdrop" class="backdrop hidden"></div>
+
+      <dialog id="exportDialog" class="export-dialog">
+        <form method="dialog">
+          <div class="drawer-heading">
+            <div>
+              <div class="eyebrow">Выгрузка Excel</div>
+              <h2>Выберите период</h2>
+            </div>
+            <button value="cancel" class="drawer-close inline" type="submit">×</button>
+          </div>
+          <div class="date-row export-dates">
+            <label>
+              <span>Дата начала</span>
+              <input id="exportFrom" type="date" required>
+            </label>
+            <label>
+              <span>Дата окончания</span>
+              <input id="exportTo" type="date" required>
+            </label>
+          </div>
+          <div class="drawer-actions">
+            <button value="cancel" class="button secondary" type="submit">Отмена</button>
+            <button id="downloadExport" class="button primary" type="button">Скачать Excel</button>
+          </div>
+        </form>
+      </dialog>
+
+
+
+      <dialog id="adminLoginDialog" class="admin-login-dialog">
+        <form id="adminLoginForm" method="dialog" autocomplete="off">
+          <div class="drawer-heading">
+            <div>
+              <div class="eyebrow">Служебный режим</div>
+              <h2>Вход администратора</h2>
+            </div>
+            <button id="closeAdminLogin" class="drawer-close inline" type="button" aria-label="Закрыть">×</button>
+          </div>
+          <p class="admin-login-note">В этом режиме можно менять только статусы выездов.</p>
+          <label class="admin-field">
+            <span>Пароль администратора</span>
+            <input id="adminPasswordInput" type="password" autocomplete="current-password" required>
+          </label>
+          <div id="adminLoginError" class="password-error hidden" role="alert"></div>
+          <div class="drawer-actions">
+            <button id="cancelAdminLogin" class="button secondary" type="button">Отмена</button>
+            <button id="adminLoginSubmit" class="button primary" type="button">Войти</button>
+          </div>
+        </form>
+      </dialog>
+
+      <aside id="adminDrawer" class="admin-drawer" aria-hidden="true">
+        <div class="admin-drawer-header">
+          <div>
+            <div class="eyebrow">Режим администратора</div>
+            <h2>Статусы выездов</h2>
+            <p>Изменения сохраняются отдельно от Excel и применяются по VISIT_ID.</p>
+          </div>
+          <button id="closeAdminDrawer" class="drawer-close inline" type="button" aria-label="Закрыть">×</button>
+        </div>
+
+        <div class="admin-toolbar">
+          <label class="admin-field">
+            <span>Показать</span>
+            <select id="adminStatusFilter">
+              <option value="Требует подтверждения">Требуют подтверждения</option>
+              <option value="">Все выезды</option>
+              <option value="Запланирован">Запланированные</option>
+              <option value="Выполнен">Выполненные</option>
+              <option value="Перенесён">Перенесённые</option>
+              <option value="Отменён">Отменённые</option>
+              <option value="Завершено">Завершённые</option>
+            </select>
+          </label>
+          <label class="admin-field admin-search-field">
+            <span>Поиск</span>
+            <input id="adminSearchInput" type="search" placeholder="Объект, сотрудник или дата">
+          </label>
+        </div>
+
+        <div class="admin-summary-row">
+          <span id="adminVisitCount">0 выездов</span>
+          <button id="adminLogout" class="text-button" type="button">Выйти из режима</button>
+        </div>
+        <div id="adminVisitList" class="admin-visit-list"></div>
+      </aside>
+      <div id="adminBackdrop" class="backdrop admin-backdrop hidden"></div>
+
+      <div id="toast" class="toast hidden"></div>
+    </main>
+  </div>
+  <link id="mainStyles" rel="stylesheet" href="styles.v207.8700036bbe78.css">
+  <script src="corporate-shell.v207.ceeb1a69eec5.js" defer></script>
+</body>
+</html>
