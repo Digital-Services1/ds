@@ -1,0 +1,56 @@
+ДИАГНОСТИКА ЗАГРУЗКИ 2.0.7
+
+НОРМАЛЬНЫЙ ЗАПУСК
+1. Сразу виден экран ввода пароля.
+2. После входа открываются карточки, показатели и фильтры.
+3. Карта появляется отдельно; при её ошибке интерфейс остаётся доступен.
+4. Строка синхронизации сообщает актуальность Excel.
+
+ЕСЛИ НЕ ВИДНО ДАЖЕ ФОРМЫ
+Устройство не получило HTML с Netlify. Проверьте прямой адрес:
+  https://testp360.netlify.app/
+и сервер авторизации:
+  https://testp360.netlify.app/api/access-session
+
+Ожидаемый анонимный ответ:
+  {"authenticated":false,"configured":true}
+
+Если оба адреса не открываются, домен блокируется VPN, DNS, прокси или
+межсетевым экраном. Код дашборда здесь ещё не выполнялся.
+
+ЕСЛИ ФОРМА ЕСТЬ, НО ВХОД НЕ ПРОХОДИТ
+- неверный пароль: сообщение «Неверный пароль»;
+- отсутствует переменная: сервер вернёт понятную ошибку настройки;
+- медленный канал: выполняются две попытки, форма остаётся видимой;
+- после восстановления сети проверка запускается повторно автоматически.
+
+ЕСЛИ ИНТЕРФЕЙС ЕСТЬ, НО НЕТ КАРТЫ
+Это отдельный сбой api-maps.yandex.ru, VPN, фильтра рекламы либо ограничения
+ключа. Используйте кнопку «Повторить загрузку». Данные и админка работают без
+карты.
+
+КОНСОЛЬ
+F12 -> Console. Сообщения начинаются с [PhotoDashboard]. Важные этапы:
+- HTML received; static auth shell is available;
+- Auth screen rendered;
+- Server authorization state checked;
+- Data loading completed;
+- Object rendering completed;
+- Yandex Maps loading completed либо понятная ошибка;
+- Initialization completed.
+
+PRODUCTION-ФАЙЛЫ
+В опубликованной папке dist должны быть только:
+  index.html
+  corporate-shell.v207.<hash>.js
+  styles.v207.<hash>.css
+  config.v207.<hash>.js
+  bootstrap.v207.<hash>.js
+  app.v207.<hash>.js
+  admin.v207.<hash>.js
+  excel-loader.v207.<hash>.js
+  period-utils.v207.<hash>.js
+  moscow_boundary.geojson
+  placeholder.svg
+
+Excel, data.v207.js и исходные bootstrap/config/styles в production не попадают.

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+<defs>
+  <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#e8edf3"/>
+    <stop offset="1" stop-color="#cbd5e1"/>
+  </linearGradient>
+</defs>
+<rect width="1200" height="720" fill="url(#g)"/>
+<g fill="none" stroke="#718096" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" opacity=".8">
+  <path d="M230 520h740"/>
+  <path d="M310 520V310l180-105 180 105v210"/>
+  <path d="M670 520V365l120-75 120 75v155"/>
+  <path d="M405 520V390h150v130"/>
+  <path d="M755 520V420h70v100"/>
+</g>
+<text x="600" y="625" text-anchor="middle" font-family="Arial, sans-serif" font-size="36" fill="#475569">Фотография объекта</text>
+</svg>

@@ -1,0 +1,72 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/dashboard-data"
+  to = "/.netlify/functions/dashboard-data"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/version"
+  to = "/.netlify/functions/dashboard-data?mode=version"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/access-session"
+  to = "/.netlify/functions/access-session"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/photo"
+  to = "/.netlify/functions/photo"
+  status = 200
+  force = true
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Cache-Control = "public, max-age=0, must-revalidate"
+  X-PhotoDashboard-Build = "2.0.7-rc5-fast-load-20260804"
+
+
+[functions]
+  node_bundler = "esbuild"
+
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate, max-age=0"
+
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate, max-age=0"
+
+
+[[headers]]
+  for = "/*.v207.*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.v207.*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/moscow_boundary.geojson"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"
+
+[[headers]]
+  for = "/placeholder.svg"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"

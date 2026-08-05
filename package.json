@@ -1,0 +1,22 @@
+{
+  "name": "photo360-dashboard-admin",
+  "version": "2.0.7-timeweb-pilot1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prestart": "node scripts/build-resilient-release.mjs",
+    "start": "node server.js",
+    "build": "node scripts/build-resilient-release.mjs && npm run test:data",
+    "test:data": "node scripts/verify-dashboard-data.mjs && node scripts/verify-dashboard-function.mjs && node scripts/verify-excel-write.mjs && node scripts/verify-auth-and-period.mjs && node scripts/verify-photo-cache.mjs && node scripts/verify-loading-resilience.mjs && node scripts/qa-mobile-shell.mjs",
+    "test:timeweb": "node scripts/verify-timeweb-server.mjs"
+  },
+  "dependencies": {
+    "compression": "1.8.1",
+    "express": "5.1.0",
+    "fast-xml-parser": "5.10.1",
+    "fflate": "0.8.3"
+  },
+  "devDependencies": {
+    "jsdom": "26.1.0"
+  }
+}

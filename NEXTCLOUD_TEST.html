@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Проверка Nextcloud</title>
+  <style>
+    body{font-family:Arial,sans-serif;background:#eef2f6;color:#17233a;margin:0;padding:24px}
+    main{max-width:820px;margin:auto;background:white;border-radius:18px;padding:24px;box-shadow:0 12px 36px rgba(23,35,58,.12)}
+    h1{margin-top:0} .row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+    label{display:grid;gap:6px;font-weight:700} input{padding:10px 12px;border:1px solid #b9c5d3;border-radius:10px}
+    button,a.button{border:0;border-radius:10px;padding:11px 15px;background:#9e1f36;color:white;font-weight:700;text-decoration:none;cursor:pointer}
+    img{display:block;width:100%;max-height:440px;object-fit:contain;background:#e7edf3;border-radius:14px;margin-top:18px}
+    pre{white-space:pre-wrap;background:#f4f7fa;padding:14px;border-radius:12px;min-height:70px}
+    .muted{color:#66758a;font-size:14px}.ok{color:#087d55}.bad{color:#b4233d}
+  </style>
+<script src="config.source.js?v=2.0.7-rc5-fast-load-20260804"></script>
+</head>
+<body>
+<main>
+  <h1>Проверка фотографий Nextcloud</h1>
+  <p class="muted">Страница не использует Яндекс Карты и проверяет только публичную папку и два способа получения изображения.</p>
+  <div class="row">
+    <label>OBJECT_ID<input id="objectId" value="OBJ_013" pattern="OBJ_\d{3}"></label>
+    <button id="run" type="button">Проверить фото</button>
+    <a id="openPreview" class="button" target="_blank" rel="noopener">Открыть URL превью</a>
+    <a id="openDownload" class="button" target="_blank" rel="noopener">Открыть исходный файл</a>
+    <a id="openFolder" class="button" target="_blank" rel="noopener">Открыть папку</a>
+  </div>
+  <pre id="log">Проверка ещё не запускалась.</pre>
+  <img id="photo" alt="Тестовая фотография" src="placeholder.svg">
+</main>
+<script>
+(() => {
+  const folder = String(window.APP_CONFIG?.nextcloudPublicFolderUrl || '').trim().replace(/\/$/, '');
+  const version = String(window.APP_CONFIG?.nextcloudPhotoVersion || 'v1183');
+  const log = document.getElementById('log');
+  const image = document.getElementById('photo');
+  document.getElementById('openFolder').href = folder || '#';
+
+  function parseShare() {
+    const url = new URL(folder);
+    const match = url.pathname.match(/^(.*?)(?:\/index\.php)?\/s\/([^/?#]+)/i);
+    if (!match) throw new Error('Ссылка не соответствует формату Nextcloud /s/<token>');
+    const prefix = match[1] || '';
+    const usesIndex = /\/index\.php\/s\//i.test(url.pathname);
+    return {origin:url.origin, token:decodeURIComponent(match[2]), front:`${prefix}${usesIndex ? '/index.php' : ''}`};
+  }
+
+  function urls(objectId) {
+    const share = parseShare();
+    const filename = `${objectId.toUpperCase()}.jpg`;
+    const preview = new URL(`${share.origin}${share.front}/apps/files_sharing/publicpreview/${encodeURIComponent(share.token)}`);
+    preview.search = new URLSearchParams({file:`/${filename}`,x:'960',y:'540',a:'true',scalingup:'0',v:version});
+    const download = new URL(`${folder}/download`);
+    download.search = new URLSearchParams({path:'/',files:filename,v:version});
+    return [{name:'Оптимизированное превью',url:preview.toString(),timeout:10000},{name:'Исходный файл',url:download.toString(),timeout:15000}];
+  }
+
+  function load(src, timeout) {
+    return new Promise((resolve,reject) => {
+      let done=false;
+      const timer=setTimeout(() => {if(done)return;done=true;image.onload=image.onerror=null;image.removeAttribute('src');reject(new Error('тайм-аут'));},timeout);
+      image.onload=()=>{if(done)return;done=true;clearTimeout(timer);image.onload=image.onerror=null;if(image.naturalWidth<120||image.naturalHeight<80)reject(new Error(`получено ${image.naturalWidth}×${image.naturalHeight}, это не фотография`));else resolve();};
+      image.onerror=()=>{if(done)return;done=true;clearTimeout(timer);image.onload=image.onerror=null;reject(new Error('ошибка загрузки'));};
+      image.referrerPolicy='no-referrer';
+      image.src=src;
+    });
+  }
+
+  async function run() {
+    const objectId=document.getElementById('objectId').value.trim().toUpperCase();
+    if(!/^OBJ_\d{3}$/.test(objectId)){log.textContent='Некорректный OBJECT_ID';log.className='bad';return;}
+    log.className='';
+    image.src='placeholder.svg';
+    let output=[];
+    try {
+      for(const item of urls(objectId)){
+        const started=performance.now();
+        output.push(`${item.name}: ${item.url}`);
+        log.textContent=output.join('\n');
+        try{
+          await load(item.url,item.timeout);
+          output.push(`УСПЕХ за ${((performance.now()-started)/1000).toFixed(1)} с, размер ${image.naturalWidth}×${image.naturalHeight}`);
+          log.textContent=output.join('\n');log.className='ok';return;
+        }catch(error){output.push(`Не удалось: ${error.message}`);}
+      }
+      throw new Error('оба способа загрузки не сработали');
+    } catch(error) {
+      image.src='placeholder.svg';
+      output.push(`ИТОГ: ${error.message}`);
+      log.textContent=output.join('\n');log.className='bad';
+    }
+  }
+  document.getElementById('run').addEventListener('click',run);
+  function refreshLinks(){const objectId=document.getElementById('objectId').value.trim().toUpperCase();try{const items=urls(objectId);document.getElementById('openPreview').href=items[0].url;document.getElementById('openDownload').href=items[1].url;}catch(_){document.getElementById('openPreview').href='#';document.getElementById('openDownload').href='#';}}
+  document.getElementById('objectId').addEventListener('input',refreshLinks);
+  refreshLinks();
+})();
+</script>
+</body>
+</html>
